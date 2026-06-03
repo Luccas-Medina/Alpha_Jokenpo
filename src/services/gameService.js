@@ -184,6 +184,9 @@ function handleClientMessage(ws, data) {
     case "SEND_CHAT":
       handleSendChat(ws, data.payload);
       break;
+    case "REQUEST_REMATCH":
+      handleRequestRematch(ws);
+      break;
     default:
       sendToClient(ws, "ERROR", {
         message: `Tipo de mensagem desconhecido: ${data.type}`,
@@ -219,6 +222,7 @@ function handleCreateRoom(ws) {
     status: "waiting", // A sala começa aguardando o segundo jogador.
     choices: new Map(), // Inicializa o Map para armazenar as jogadas da rodada.
     scores: {}, // Inicializa o placar de vitórias.
+    rematchRequests: new Set(), // Conjunto de IDs dos jogadores que pediram revanche.
   };
 
   // Adiciona o ID do criador ao Set de IDs.
@@ -432,15 +436,14 @@ function processRoundResult(room) {
     scores: room.scores,
   };
 
+  // Muda o status da sala para 'finished' (rodada encerrada, aguardando revanche).
+  room.status = "finished";
+  room.rematchRequests.clear();
+
   // Envia o resultado da rodada para ambos os jogadores.
   room.players.forEach((player) => {
     sendToClient(player.ws, "GAME_RESULT", resultPayload);
   });
-
-  // Agenda o início de uma nova rodada após um breve intervalo.
-  setTimeout(() => {
-    startNewRound(room);
-  }, 10000);
 }
 
 /**
@@ -450,8 +453,10 @@ function processRoundResult(room) {
 function startNewRound(room) {
   log(`Iniciando nova rodada na sala ${room.roomCode}.`);
 
-  // Limpa as escolhas para a próxima rodada.
+  // Volta o status para 'playing' e limpa os estados da rodada anterior.
+  room.status = "playing";
   room.choices.clear();
+  room.rematchRequests.clear();
 
   // Envia uma mensagem para todos os jogadores na sala informando sobre a nova rodada.
   room.players.forEach((player) => {
@@ -575,6 +580,52 @@ function handleSendChat(ws, payload) {
   room.players.forEach((player) => {
     sendToClient(player.ws, "CHAT_MESSAGE", chatPayload);
   });
+}
+
+/**
+ * Lida com o pedido de revanche (jogar novamente) de um jogador.
+ * A nova rodada só começa quando ambos os jogadores solicitarem.
+ * @param {WebSocket} ws - A conexão do jogador que pediu revanche.
+ */
+function handleRequestRematch(ws) {
+  const room = rooms.get(ws.currentRoomCode);
+
+  if (!room) {
+    return sendToClient(ws, "ERROR", {
+      message: "Você não está em uma sala.",
+    });
+  }
+  if (room.status !== "finished") {
+    return sendToClient(ws, "ERROR", {
+      message: "A rodada atual ainda não terminou.",
+    });
+  }
+  if (room.rematchRequests.has(ws.clientId)) {
+    return sendToClient(ws, "ERROR", {
+      message: "Você já solicitou revanche.",
+    });
+  }
+
+  room.rematchRequests.add(ws.clientId);
+  log(
+    `${ws.clientUsername} quer jogar novamente na sala ${room.roomCode}. (${room.rematchRequests.size}/2)`,
+    { ws }
+  );
+
+  const payload = {
+    playerId: ws.clientId,
+    playerUsername: ws.clientUsername,
+    bothReady: room.rematchRequests.size === 2,
+  };
+
+  room.players.forEach((player) => {
+    sendToClient(player.ws, "REMATCH_REQUESTED", payload);
+  });
+
+  if (room.rematchRequests.size === 2) {
+    log(`Ambos os jogadores aceitaram revanche na sala ${room.roomCode}.`);
+    startNewRound(room);
+  }
 }
 
 /**

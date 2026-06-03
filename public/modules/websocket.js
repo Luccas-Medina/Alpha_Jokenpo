@@ -14,6 +14,7 @@ import {
   unlockChoicesUI,
   resetToLobby,
   displayChatMessage,
+  updateRematchStatus,
 } from "./ui.js";
 
 /**
@@ -143,6 +144,9 @@ function handleServerMessage(message) {
       break;
     case "CHAT_MESSAGE":
       displayChatMessage(message.payload);
+      break;
+    case "REMATCH_REQUESTED":
+      updateRematchStatus(message.payload);
       break;
     case "ROOM_CLOSED":
       alert(message.payload.message);

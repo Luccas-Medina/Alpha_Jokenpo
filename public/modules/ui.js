@@ -37,6 +37,10 @@ const chatMessages = document.getElementById("chatMessages");
 const chatInput = document.getElementById("chatInput");
 const chatSendBtn = document.getElementById("chatSendBtn");
 
+const rematchSection = document.getElementById("rematchSection");
+const rematchBtn = document.getElementById("rematchBtn");
+const rematchStatus = document.getElementById("rematchStatus");
+
 // Exporta as referências que serão usadas por outros módulos para adicionar event listeners.
 export const uiElements = {
   loginForm,
@@ -50,6 +54,7 @@ export const uiElements = {
   roomInfoText,
   chatInput,
   chatSendBtn,
+  rematchBtn,
 };
 
 /**
@@ -143,11 +148,16 @@ export function updateRoomUI(roomState) {
     uiElements.closeRoomBtn.classList.add("hidden");
   }
 
-  // Mostra ou esconde os botões de escolha (Pedra, Papel, Tesoura) com base no status do jogo.
+  // Mostra ou esconde os botões de escolha e seções com base no status do jogo.
   if (roomState.status === "playing") {
     choicesDiv.classList.remove("hidden");
+    hideRematchSection();
+  } else if (roomState.status === "finished") {
+    choicesDiv.classList.add("hidden");
+    showRematchSection();
   } else {
     choicesDiv.classList.add("hidden");
+    hideRematchSection();
   }
 
   // Mostra o chat da sala.
@@ -189,10 +199,12 @@ export function lockChoicesUI(chosen) {
  * Reativa os botões de escolha para a próxima rodada, removendo o feedback visual.
  */
 export function unlockChoicesUI() {
+  choicesDiv.classList.remove("hidden");
   uiElements.gameChoiceBtns.forEach((btn) => {
     btn.disabled = false;
     btn.classList.remove("opacity-50", "border-green-500", "border-4");
   });
+  hideRematchSection();
   roomInfoText.textContent = `Sala: ${session.currentRoomCode} | Status: playing | Aguardando jogadas...`;
 }
 
@@ -226,6 +238,10 @@ export function displayRoundResult(resultPayload) {
 
   // Atualiza o placar com os dados recebidos.
   updateScoreboardUI(scores, players);
+
+  // Mostra a seção de revanche (Jogar Novamente).
+  choicesDiv.classList.add("hidden");
+  showRematchSection();
 }
 
 /**
@@ -300,6 +316,42 @@ export function displayChatMessage(payload) {
 }
 
 /**
+ * Mostra a seção de revanche (Jogar Novamente) após o resultado.
+ */
+function showRematchSection() {
+  rematchSection.classList.remove("hidden");
+  rematchBtn.disabled = false;
+  rematchBtn.textContent = "Jogar Novamente";
+  rematchStatus.textContent = "Clique para jogar outra rodada.";
+}
+
+/**
+ * Esconde a seção de revanche.
+ */
+function hideRematchSection() {
+  rematchSection.classList.add("hidden");
+  rematchStatus.textContent = "";
+}
+
+/**
+ * Atualiza o status da revanche quando um jogador solicita.
+ * @param {{ playerId: number, playerUsername: string, bothReady: boolean }} payload
+ */
+export function updateRematchStatus(payload) {
+  if (payload.bothReady) {
+    rematchStatus.textContent = "Ambos aceitaram! Iniciando nova rodada...";
+    return;
+  }
+
+  if (payload.playerId == session.myUserId) {
+    rematchBtn.disabled = true;
+    rematchStatus.textContent = "Você aceitou. Aguardando oponente...";
+  } else {
+    rematchStatus.textContent = `${payload.playerUsername} quer jogar novamente!`;
+  }
+}
+
+/**
  * Reseta a interface do usuário para o estado de "Lobby",
  * como se o jogador nunca tivesse entrado em uma sala.
  */
@@ -310,6 +362,8 @@ export function resetToLobby() {
   gameArea.classList.add("hidden");
   // Esconde o placar.
   scoreboard.classList.add("hidden");
+  // Esconde a seção de revanche.
+  hideRematchSection();
   // Esconde o chat.
   hideChat();
   // Reseta o código da sala atual no estado do cliente.

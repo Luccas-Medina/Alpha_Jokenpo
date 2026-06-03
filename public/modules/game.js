@@ -58,6 +58,11 @@ export function initializeGameActions() {
       sendChatMessage();
     }
   });
+
+  // Adiciona um "ouvinte" ao botão de Jogar Novamente (revanche).
+  uiElements.rematchBtn.addEventListener("click", () => {
+    sendWebSocketMessage({ type: "REQUEST_REMATCH", payload: {} });
+  });
 }
 
 /**
