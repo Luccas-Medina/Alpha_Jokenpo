@@ -64,6 +64,7 @@ const rooms = new Map();
  * @property {number} ownerId - O ID do jogador que criou a sala.
  * @property {'waiting' | 'playing'} status - O estado atual da sala.
  * @property {Map<number, 'rock' | 'paper' | 'scissors'>} choices - Mapeia o ID do jogador à sua escolha na rodada atual.
+ * @property {Object<number, number>} scores - Objeto que mapeia o ID de cada jogador ao seu número de vitórias.
  */
 
 /**
@@ -215,6 +216,7 @@ function handleCreateRoom(ws) {
     ownerId: ws.clientId, // O criador é o dono da sala.
     status: "waiting", // A sala começa aguardando o segundo jogador.
     choices: new Map(), // Inicializa o Map para armazenar as jogadas da rodada.
+    scores: {}, // Inicializa o placar de vitórias.
   };
 
   // Adiciona o ID do criador ao Set de IDs.
@@ -243,6 +245,7 @@ function handleCreateRoom(ws) {
       username: p.username,
     })),
     status: room.status,
+    scores: room.scores,
   };
 
   // Envia a confirmação de criação da sala para o cliente.
@@ -294,6 +297,12 @@ function handleJoinRoom(ws, payload) {
   // Atualiza o status da sala para 'playing' pois agora tem 2 jogadores.
   room.status = "playing";
 
+  // Inicializa o placar para ambos os jogadores.
+  room.scores = {};
+  room.players.forEach((player, id) => {
+    room.scores[id] = 0;
+  });
+
   log(`${ws.clientUsername} entrou na sala ${roomCode}. O jogo vai começar.`, {
     ws,
   });
@@ -312,6 +321,7 @@ function handleJoinRoom(ws, payload) {
       username: p.username,
     })),
     status: room.status,
+    scores: room.scores,
   };
 
   // Notifica ambos os jogadores sobre a entrada e o início do jogo.
@@ -394,10 +404,15 @@ function processRoundResult(room) {
     winnerId = player2Id;
   }
 
+  // Atualiza o placar de vitórias.
+  if (winnerId !== null) {
+    room.scores[winnerId] = (room.scores[winnerId] || 0) + 1;
+  }
+
   log(
     `Resultado da rodada na sala ${room.roomCode}: Vencedor ID: ${
       winnerId || "Empate"
-    }.`,
+    }. Placar: ${JSON.stringify(room.scores)}`,
     { data: { choices: Object.fromEntries(room.choices) } }
   );
 
@@ -412,6 +427,7 @@ function processRoundResult(room) {
       [player1Id]: room.players.get(player1Id).username,
       [player2Id]: room.players.get(player2Id).username,
     },
+    scores: room.scores,
   };
 
   // Envia o resultado da rodada para ambos os jogadores.
@@ -582,6 +598,7 @@ function attemptPlayerReconnection(ws) {
         })),
         status: room.status,
         myChoice: room.choices.get(ws.clientId) || null,
+        scores: room.scores,
       };
 
       // Envia o estado da sala atualizado para o jogador reconectado.

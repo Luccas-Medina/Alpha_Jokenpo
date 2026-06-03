@@ -29,6 +29,9 @@ const gameChoiceBtns = document.querySelectorAll(".game-choice-btn");
 
 const closeRoomBtn = document.getElementById("closeRoomBtn");
 
+const scoreboard = document.getElementById("scoreboard");
+const scoreboardText = document.getElementById("scoreboardText");
+
 // Exporta as referências que serão usadas por outros módulos para adicionar event listeners.
 export const uiElements = {
   loginForm,
@@ -140,6 +143,9 @@ export function updateRoomUI(roomState) {
     choicesDiv.classList.add("hidden");
   }
 
+  // Atualiza o placar de vitórias, se disponível no estado da sala.
+  updateScoreboardUI(roomState.scores, roomState.players);
+
   // Lógica para habilitar ou bloquear os botões de escolha (Pedra, Papel, Tesoura)
   // (a parte do myChoice é usada na reconexão)
   // Se o jogo está em andamento e o usuário ainda não fez uma escolha,
@@ -188,7 +194,7 @@ export function unlockChoicesUI() {
  * @param {{[playerId: string]: string}} resultPayload.players - Objeto que associa o id de cada jogador ao seu nome de usuário.
  */
 export function displayRoundResult(resultPayload) {
-  const { choices, winnerId, players } = resultPayload;
+  const { choices, winnerId, players, scores } = resultPayload;
   let resultText;
 
   const choicesText = Object.entries(choices)
@@ -207,6 +213,37 @@ export function displayRoundResult(resultPayload) {
   }
 
   roomInfoText.textContent = `Resultado: ${resultText} (${choicesText})`;
+
+  // Atualiza o placar com os dados recebidos.
+  updateScoreboardUI(scores, players);
+}
+
+/**
+ * Atualiza o placar de vitórias na interface.
+ * @param {Object<number, number>} scores - Objeto mapeando ID do jogador ao número de vitórias.
+ * @param {Array<{id: number, username: string}> | Object<number, string>} players - Lista ou mapa de jogadores com nomes.
+ */
+function updateScoreboardUI(scores, players) {
+  if (!scores || Object.keys(scores).length === 0) {
+    scoreboard.classList.add("hidden");
+    return;
+  }
+  scoreboard.classList.remove("hidden");
+
+  const names = {};
+  if (Array.isArray(players)) {
+    players.forEach((p) => {
+      names[p.id] = p.username;
+    });
+  } else {
+    Object.assign(names, players);
+  }
+
+  const parts = Object.entries(scores).map(([id, wins]) => {
+    const name = names[id] || `Jogador ${id}`;
+    return `${name}: ${wins}`;
+  });
+  scoreboardText.textContent = `Placar: ${parts.join(" | ")}`;
 }
 
 /**
@@ -218,6 +255,8 @@ export function resetToLobby() {
   roomActions.classList.remove("hidden");
   // Esconde a área de jogo.
   gameArea.classList.add("hidden");
+  // Esconde o placar.
+  scoreboard.classList.add("hidden");
   // Reseta o código da sala atual no estado do cliente.
   session.currentRoomCode = null;
 }
