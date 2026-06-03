@@ -154,6 +154,29 @@
           >
             <p id="scoreboardText" class="font-medium"></p>
           </div>
+          <!-- Seção de chat da sala -->
+          <div id="chatSection" class="mb-4 hidden">
+            <div
+              id="chatMessages"
+              class="h-32 overflow-y-auto p-3 bg-gray-50 border rounded mb-2 space-y-1 text-sm"
+            >
+              <p class="text-gray-500" id="chatPlaceholder">Chat da sala...</p>
+            </div>
+            <div class="flex gap-2">
+              <input
+                type="text"
+                id="chatInput"
+                placeholder="Digite uma mensagem..."
+                class="flex-grow shadow appearance-none border rounded py-2 px-3"
+              />
+              <button
+                id="chatSendBtn"
+                class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+              >
+                Enviar
+              </button>
+            </div>
+          </div>
           <!-- Seção com os botões de escolha do jogo -->
           <div id="choices" class="text-center mt-6">
             <h3 class="text-xl font-semibold mb-4">Faça sua escolha:</h3>

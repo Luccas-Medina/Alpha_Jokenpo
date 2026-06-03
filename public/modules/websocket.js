@@ -13,6 +13,7 @@ import {
   displayRoundResult,
   unlockChoicesUI,
   resetToLobby,
+  displayChatMessage,
 } from "./ui.js";
 
 /**
@@ -139,6 +140,9 @@ function handleServerMessage(message) {
     case "OPPONENT_RECONNECTED":
       logEvent("SYSTEM_INFO", message.payload.message);
       updateRoomUI(message.payload);
+      break;
+    case "CHAT_MESSAGE":
+      displayChatMessage(message.payload);
       break;
     case "ROOM_CLOSED":
       alert(message.payload.message);

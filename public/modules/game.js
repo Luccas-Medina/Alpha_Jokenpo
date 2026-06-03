@@ -49,4 +49,23 @@ export function initializeGameActions() {
       sendWebSocketMessage({ type: "CLOSE_ROOM", payload: {} });
     }
   });
+
+  // Adiciona um "ouvinte" ao botão de enviar chat.
+  uiElements.chatSendBtn.addEventListener("click", sendChatMessage);
+  // Adiciona um "ouvinte" para enviar chat ao pressionar Enter.
+  uiElements.chatInput.addEventListener("keypress", (e) => {
+    if (e.key === "Enter") {
+      sendChatMessage();
+    }
+  });
+}
+
+/**
+ * Envia uma mensagem de chat para o servidor.
+ */
+function sendChatMessage() {
+  const message = uiElements.chatInput.value.trim();
+  if (!message) return;
+  sendWebSocketMessage({ type: "SEND_CHAT", payload: { message } });
+  uiElements.chatInput.value = "";
 }

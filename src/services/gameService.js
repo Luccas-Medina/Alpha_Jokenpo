@@ -181,7 +181,9 @@ function handleClientMessage(ws, data) {
     case "CLOSE_ROOM":
       handleCloseRoom(ws);
       break;
-    // Outros tipos de mensagem serão adicionados nas próximas fases.
+    case "SEND_CHAT":
+      handleSendChat(ws, data.payload);
+      break;
     default:
       sendToClient(ws, "ERROR", {
         message: `Tipo de mensagem desconhecido: ${data.type}`,
@@ -534,6 +536,45 @@ function handleCloseRoom(ws) {
 
   // Remove a sala do Map global de salas ativas.
   rooms.delete(room.roomCode);
+}
+
+/**
+ * Lida com o envio de mensagens de chat entre jogadores na mesma sala.
+ * @param {WebSocket} ws - A conexão do jogador que enviou a mensagem.
+ * @param {object} payload - O payload da mensagem.
+ * @param {string} payload.message - O texto da mensagem.
+ */
+function handleSendChat(ws, payload) {
+  const { message } = payload;
+  const room = rooms.get(ws.currentRoomCode);
+
+  if (!room) {
+    return sendToClient(ws, "ERROR", {
+      message: "Você não está em uma sala.",
+    });
+  }
+
+  if (!message || typeof message !== "string" || message.trim().length === 0) {
+    return sendToClient(ws, "ERROR", {
+      message: "Mensagem inválida.",
+    });
+  }
+
+  const chatPayload = {
+    from: ws.clientUsername,
+    fromId: ws.clientId,
+    message: message.trim(),
+    timestamp: new Date().toISOString(),
+  };
+
+  log(
+    `Chat na sala ${room.roomCode}: ${ws.clientUsername} disse: "${message.trim()}"`,
+    { ws }
+  );
+
+  room.players.forEach((player) => {
+    sendToClient(player.ws, "CHAT_MESSAGE", chatPayload);
+  });
 }
 
 /**

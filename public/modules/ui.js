@@ -32,6 +32,11 @@ const closeRoomBtn = document.getElementById("closeRoomBtn");
 const scoreboard = document.getElementById("scoreboard");
 const scoreboardText = document.getElementById("scoreboardText");
 
+const chatSection = document.getElementById("chatSection");
+const chatMessages = document.getElementById("chatMessages");
+const chatInput = document.getElementById("chatInput");
+const chatSendBtn = document.getElementById("chatSendBtn");
+
 // Exporta as referências que serão usadas por outros módulos para adicionar event listeners.
 export const uiElements = {
   loginForm,
@@ -43,6 +48,8 @@ export const uiElements = {
   gameChoiceBtns,
   closeRoomBtn,
   roomInfoText,
+  chatInput,
+  chatSendBtn,
 };
 
 /**
@@ -142,6 +149,9 @@ export function updateRoomUI(roomState) {
   } else {
     choicesDiv.classList.add("hidden");
   }
+
+  // Mostra o chat da sala.
+  showChat();
 
   // Atualiza o placar de vitórias, se disponível no estado da sala.
   updateScoreboardUI(roomState.scores, roomState.players);
@@ -247,6 +257,49 @@ function updateScoreboardUI(scores, players) {
 }
 
 /**
+ * Mostra o chat e o limpa, chamado quando o jogador entra em uma sala.
+ */
+function showChat() {
+  chatSection.classList.remove("hidden");
+  chatMessages.innerHTML =
+    '<p class="text-gray-500" id="chatPlaceholder">Chat da sala...</p>';
+}
+
+/**
+ * Esconde o chat, chamado quando o jogador sai da sala.
+ */
+function hideChat() {
+  chatSection.classList.add("hidden");
+}
+
+/**
+ * Adiciona uma mensagem de chat recebida à interface.
+ * @param {{ from: string, fromId: number, message: string, timestamp: string }} payload
+ */
+export function displayChatMessage(payload) {
+  const placeholder = chatMessages.querySelector("#chatPlaceholder");
+
+  if (placeholder) {
+    placeholder.remove();
+  }
+
+  const time = new Date(payload.timestamp).toLocaleTimeString("pt-BR");
+  const isMine = payload.fromId == session.myUserId;
+  const alignment = isMine ? "text-right" : "text-left";
+  const nameColor = isMine ? "text-blue-600" : "text-green-600";
+
+  const entry = document.createElement("div");
+  entry.className = `${alignment}`;
+  entry.innerHTML = `
+    <span class="text-xs text-gray-400">${time}</span>
+    <span class="font-semibold ${nameColor}">${payload.from}:</span>
+    <span>${payload.message}</span>
+  `;
+  chatMessages.appendChild(entry);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+/**
  * Reseta a interface do usuário para o estado de "Lobby",
  * como se o jogador nunca tivesse entrado em uma sala.
  */
@@ -257,6 +310,8 @@ export function resetToLobby() {
   gameArea.classList.add("hidden");
   // Esconde o placar.
   scoreboard.classList.add("hidden");
+  // Esconde o chat.
+  hideChat();
   // Reseta o código da sala atual no estado do cliente.
   session.currentRoomCode = null;
 }
