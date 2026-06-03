@@ -223,6 +223,7 @@ function handleCreateRoom(ws) {
     choices: new Map(), // Inicializa o Map para armazenar as jogadas da rodada.
     scores: {}, // Inicializa o placar de vitórias.
     rematchRequests: new Set(), // Conjunto de IDs dos jogadores que pediram revanche.
+    roundTimeout: null, // Referência do setTimeout para timeout de inatividade.
   };
 
   // Adiciona o ID do criador ao Set de IDs.
@@ -308,6 +309,9 @@ function handleJoinRoom(ws, payload) {
   room.players.forEach((player, id) => {
     room.scores[id] = 0;
   });
+
+  // Inicia o temporizador de inatividade da rodada.
+  startRoundTimer(room);
 
   log(`${ws.clientUsername} entrou na sala ${roomCode}. O jogo vai começar.`, {
     ws,
@@ -436,6 +440,9 @@ function processRoundResult(room) {
     scores: room.scores,
   };
 
+  // Cancela o temporizador de inatividade, pois a rodada terminou.
+  clearRoundTimer(room);
+
   // Muda o status da sala para 'finished' (rodada encerrada, aguardando revanche).
   room.status = "finished";
   room.rematchRequests.clear();
@@ -458,12 +465,61 @@ function startNewRound(room) {
   room.choices.clear();
   room.rematchRequests.clear();
 
+  // Inicia o temporizador de inatividade para a nova rodada.
+  startRoundTimer(room);
+
   // Envia uma mensagem para todos os jogadores na sala informando sobre a nova rodada.
   room.players.forEach((player) => {
     sendToClient(player.ws, "NEW_ROUND", {
       message: "Nova rodada! Façam suas escolhas.",
     });
   });
+}
+
+/**
+ * Inicia o temporizador de inatividade da rodada.
+ * Se o tempo expirar sem que ambos os jogadores tenham feito suas jogadas,
+ * a sala é fechada por inatividade.
+ * @param {Room} room
+ */
+function startRoundTimer(room) {
+  clearRoundTimer(room);
+  const TIMEOUT_MS = 30000; // 30 segundos
+  room.roundTimeout = setTimeout(() => {
+    handleRoundTimeout(room);
+  }, TIMEOUT_MS);
+  log(`Temporizador de inatividade iniciado na sala ${room.roomCode} (${TIMEOUT_MS / 1000}s).`);
+}
+
+/**
+ * Cancela o temporizador de inatividade da rodada, se existir.
+ * @param {Room} room
+ */
+function clearRoundTimer(room) {
+  if (room.roundTimeout) {
+    clearTimeout(room.roundTimeout);
+    room.roundTimeout = null;
+  }
+}
+
+/**
+ * Callback disparado quando o tempo de inatividade da rodada expira.
+ * Fecha a sala e notifica todos os jogadores.
+ * @param {Room} room
+ */
+function handleRoundTimeout(room) {
+  log(`Tempo esgotado na sala ${room.roomCode}. Fechando por inatividade.`);
+
+  const payload = {
+    message: `Tempo esgotado! A partida foi encerrada por inatividade na sala ${room.roomCode}.`,
+  };
+
+  room.players.forEach((player) => {
+    sendToClient(player.ws, "ROOM_CLOSED", payload);
+    player.ws.currentRoomCode = null;
+  });
+
+  rooms.delete(room.roomCode);
 }
 
 /**
@@ -521,6 +577,9 @@ function handleCloseRoom(ws) {
       message: "Apenas o dono pode fechar a sala.",
     });
   }
+
+  // Cancela o temporizador de inatividade, pois a sala será fechada.
+  clearRoundTimer(room);
 
   log(
     `Sala ${room.roomCode} está sendo fechada pelo dono ${ws.clientUsername}.`,
@@ -637,6 +696,9 @@ function handlePlayerDisconnect(ws) {
   const room = rooms.get(ws.currentRoomCode);
 
   if (!room) return;
+
+  // Cancela o temporizador de inatividade, pois um jogador se desconectou.
+  clearRoundTimer(room);
 
   // Deleta o jogador do Map de jogadores da sala.
   room.players.delete(ws.clientId);
