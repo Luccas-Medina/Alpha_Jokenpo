@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Jokenpô In-Memory</title>
+    <!-- Importa o framework CSS Tailwind para estilização rápida -->
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <!-- Corpo da página com estilos base de fundo e texto -->
+  <body class="bg-gray-100 text-gray-800 font-sans">
+    <!-- Container principal que centraliza o conteúdo e define uma largura máxima -->
+    <div class="container mx-auto p-4 max-w-4xl">
+      <!-- Título principal da aplicação -->
+      <h1 class="text-4xl font-bold text-center mb-6 text-blue-600">
+        Jokenpô Multiplayer
+      </h1>
+
+      <!-- Seção para exibir informações do jogador logado (inicialmente oculta) -->
+      <div
+        id="playerInfoContainer"
+        class="text-center mb-6 p-4 bg-white rounded-lg shadow hidden"
+      >
+        <!-- Parágrafo onde o nome e ID do jogador serão inseridos via JS -->
+        <p id="playerInfo" class="text-lg font-semibold"></p>
+        <!-- Botão para o usuário fazer logout -->
+        <button
+          id="logoutBtn"
+          class="mt-2 px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+        >
+          Logout
+        </button>
+      </div>
+
+      <!-- Container para os formulários de autenticação -->
+      <div id="authForms" class="grid md:grid-cols-2 gap-6 mb-8">
+        <!-- Formulário de Registro -->
+        <form
+          id="registerForm"
+          class="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4"
+        >
+          <h2 class="text-2xl font-semibold mb-4">Registrar</h2>
+          <!-- Campo de entrada para o nome de usuário -->
+          <input
+            type="text"
+            name="username"
+            placeholder="Usuário"
+            class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline mb-4"
+            required
+          />
+          <!-- Campo de entrada para a senha -->
+          <input
+            type="password"
+            name="password"
+            placeholder="Senha"
+            class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 mb-3 leading-tight focus:outline-none focus:shadow-outline"
+            required
+          />
+          <!-- Botão de submissão do formulário -->
+          <button
+            type="submit"
+            class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline w-full"
+          >
+            Registrar
+          </button>
+        </form>
+
+        <!-- Formulário de Login -->
+        <form
+          id="loginForm"
+          class="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4"
+        >
+          <h2 class="text-2xl font-semibold mb-4">Login</h2>
+          <!-- Campo de entrada para o nome de usuário -->
+          <input
+            type="text"
+            name="username"
+            placeholder="Usuário"
+            class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline mb-4"
+            required
+          />
+          <!-- Campo de entrada para a senha -->
+          <input
+            type="password"
+            name="password"
+            placeholder="Senha"
+            class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 mb-3 leading-tight focus:outline-none focus:shadow-outline"
+            required
+          />
+          <!-- Botão de submissão do formulário -->
+          <button
+            type="submit"
+            class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline w-full"
+          >
+            Login
+          </button>
+        </form>
+      </div>
+
+      <!-- Container principal do jogo (inicialmente oculto) -->
+      <div id="gameContainer" class="hidden">
+        <!-- Seção para criar ou entrar em uma sala (Lobby) -->
+        <div id="roomActions" class="bg-white shadow-md rounded p-6 mb-6">
+          <h2 class="text-2xl font-semibold mb-4">Lobby</h2>
+          <div class="flex flex-col sm:flex-row gap-4 items-center">
+            <!-- Botão para criar uma nova sala de jogo -->
+            <button
+              id="createRoomBtn"
+              class="bg-purple-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded w-full sm:w-auto"
+            >
+              Criar Nova Sala
+            </button>
+            <!-- Div para agrupar os controles de entrada em uma sala -->
+            <div class="flex-grow w-full sm:w-auto">
+              <!-- Campo para digitar o código da sala -->
+              <input
+                type="text"
+                id="roomCodeInput"
+                placeholder="Código da Sala"
+                class="shadow appearance-none border rounded w-full py-2 px-3"
+              />
+              <!-- Botão para entrar em uma sala existente -->
+              <button
+                id="joinRoomBtn"
+                class="bg-yellow-500 hover:bg-yellow-600 text-black font-bold py-2 px-4 rounded w-full mt-2 sm:mt-0 sm:w-auto"
+              >
+                Entrar
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Área de jogo (inicialmente oculta, visível apenas quando em uma sala) -->
+        <div id="gameArea" class="bg-white shadow-md rounded p-6 mb-6 hidden">
+          <!-- Div para exibir informações sobre a sala atual -->
+          <div
+            id="roomInfo"
+            class="mb-4 p-3 bg-blue-100 border-l-4 border-blue-500 text-blue-700"
+          >
+            <!-- Parágrafo onde as informações da sala serão inseridas via JS -->
+            <p id="roomInfoText" class="font-medium"></p>
+            <!-- Botão para fechar a sala (visível apenas para o dono) -->
+            <button
+              id="closeRoomBtn"
+              class="hidden mt-2 text-xs px-2 py-1 bg-red-200 text-red-800 rounded"
+            >
+              Fechar Sala (Dono)
+            </button>
+          </div>
+          <!-- Seção com os botões de escolha do jogo -->
+          <div id="choices" class="text-center mt-6">
+            <h3 class="text-xl font-semibold mb-4">Faça sua escolha:</h3>
+            <div class="flex justify-center gap-4">
+              <!-- Botão para escolher Pedra -->
+              <button
+                data-choice="rock"
+                class="game-choice-btn p-4 border-2 rounded-lg hover:bg-gray-200"
+              >
+                Pedra ✊
+              </button>
+              <!-- Botão para escolher Papel -->
+              <button
+                data-choice="paper"
+                class="game-choice-btn p-4 border-2 rounded-lg hover:bg-gray-200"
+              >
+                Papel ✋
+              </button>
+              <!-- Botão para escolher Tesoura -->
+              <button
+                data-choice="scissors"
+                class="game-choice-btn p-4 border-2 rounded-lg hover:bg-gray-200"
+              >
+                Tesoura ✌️
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Container para o painel de log de mensagens -->
+      <div id="messagesContainer" class="bg-white shadow-md rounded p-4">
+        <h2 class="text-xl font-semibold mb-2 border-b pb-2">
+          Log de Mensagens
+        </h2>
+        <!-- Div onde as mensagens serão inseridas via JS, com scroll vertical -->
+        <div
+          id="messages"
+          class="h-64 overflow-y-auto space-y-2 p-2 bg-gray-50"
+        >
+          <!-- Mensagem inicial de placeholder -->
+          <p class="text-gray-500">Aguardando ações...</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Importa o script principal da aplicação no final do body -->
+    <script src="app.js" type="module"></script>
+  </body>
+</html>
